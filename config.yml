@@ -30,7 +30,7 @@ TESTING:
   INPUT: 'input'
   TARGET: 'target'
   VAL_DIR: 'uieb+lsui+euvp/test'     # path to testing data
-  WEIGHT: 'results/save/UIR_PolyKernel_epoch_68.pth'
+  WEIGHT: 'results/save/UIR_PolyKernel_epoch_98.pth'
   SAVE_IMAGES: True
   RESULT_DIR: 'results/save/test'
   LOG_FILE: 'results/logs.json'
