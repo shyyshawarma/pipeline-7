@@ -370,7 +370,7 @@ def train():
     model, optimizer_b, scheduler_b = accelerator.prepare(model, optimizer_b, scheduler_b)
 
     size = len(testloader)
-    early_stopping_patience = 35
+    early_stopping_patience = 50
     epochs_no_improve = 0
 
     for epoch in range(start_epoch, opt.OPTIM.NUM_EPOCHS + 1):
