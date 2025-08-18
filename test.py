@@ -530,7 +530,6 @@
 #     os.makedirs('result', exist_ok=True)
 #     test()
 
-
 import json
 import warnings
 import os
@@ -555,11 +554,9 @@ from data import get_data
 from models import *
 from utils import *
 from piq import brisque
-
 from skimage.color import rgb2lab
 from skimage.util import view_as_windows
 from scipy.signal import convolve2d
-from scipy.special import gamma
 from skimage.measure import shannon_entropy
 from sewar.full_ref import vifp
 from piq import fsim as piq_fsim
@@ -696,9 +693,9 @@ def compute_no_ref_metrics(img):
     img_tensor = torch.tensor(img.transpose(2,0,1)).unsqueeze(0).float()/255.0
     img_tensor = img_tensor.to(device)
     return {
-        'NIQE': calculate_niqe(img, crop_border=0, input_order='HWC', convert_to='y'),
-        'BRISQUE': brisque(img_tensor).item(),
-        'Entropy': entropy_score(img)
+        'NIQE': float(calculate_niqe(img, crop_border=0, input_order='HWC', convert_to='y')),
+        'BRISQUE': float(brisque(img_tensor).item()),
+        'Entropy': float(entropy_score(img))
     }
 
 # ----------------- Test Function -----------------
@@ -722,22 +719,17 @@ def test():
 
     lpips_model = lpips.LPIPS(net='alex').to(device)
 
-    # Global aggregated metrics
-    metrics = {
-        'PSNR':0, 'SSIM':0, 'MSE':0, 'RMSE':0, 'Delta-E':0, 'MAD':0,
-        'GMSD':0, 'FSIM':0, 'VIF':0, 'CIEDE2000':0, 'MS-SSIM':0, 'LPIPS':0,
-        'NIQE':0, 'BRISQUE':0, 'Entropy':0,
-        'UCIQE':0, 'UIQM':0, 'UICM':0,
-        'NIQE_CP':0
-    }
+    metrics = {k:0 for k in [
+        'PSNR','SSIM','MSE','RMSE','Delta-E','MAD','GMSD','FSIM','VIF','CIEDE2000',
+        'MS-SSIM','LPIPS','NIQE','BRISQUE','Entropy','UCIQE','UIQM','UICM','NIQE_CP'
+    ]}
 
-    # To store per-image metrics
     all_image_metrics = []
 
     for _, test_data in enumerate(tqdm(testloader)):
         inp = test_data[0].to(device)
         tar = test_data[1].to(device)
-        fname = test_data[2][0]  # filename
+        fname = test_data[2][0]
 
         with torch.no_grad():
             res = model(inp)
@@ -749,58 +741,48 @@ def test():
         res_img = tensor_to_image(res)
         tar_img = tensor_to_image(tar)
 
-        # Metrics per image
         img_metrics = {}
 
-        # Tensor-based
-        img_metrics['PSNR'] = peak_signal_noise_ratio(res, tar, data_range=1).item()
-        img_metrics['SSIM'] = structural_similarity_index_measure(res, tar, data_range=1).item()
-        mse_val = mean_squared_error(res, tar).item()
-        img_metrics['MSE'] = mse_val
-        img_metrics['MS-SSIM'] = multiscale_structural_similarity_index_measure(res, tar, data_range=1).item()
-        img_metrics['LPIPS'] = lpips_model(res, tar).mean().item()
+        img_metrics['PSNR']   = float(peak_signal_noise_ratio(res, tar, data_range=1).item())
+        img_metrics['SSIM']   = float(structural_similarity_index_measure(res, tar, data_range=1).item())
+        mse_val               = float(mean_squared_error(res, tar).item())
+        img_metrics['MSE']    = mse_val
+        img_metrics['MS-SSIM']= float(multiscale_structural_similarity_index_measure(res, tar, data_range=1).item())
+        img_metrics['LPIPS']  = float(lpips_model(res, tar).mean().item())
 
-        # NumPy-based
-        img_metrics['Delta-E'] = delta_e(res_img, tar_img)
-        img_metrics['MAD'] = mad(res_img, tar_img)
-        img_metrics['GMSD'] = gmsd(res_img, tar_img)
-        img_metrics['FSIM'] = fsim(res_img, tar_img)
-        img_metrics['VIF'] = vif(res_img, tar_img)
-        img_metrics['CIEDE2000'] = cie2000(res_img, tar_img)
+        img_metrics['Delta-E']   = float(delta_e(res_img, tar_img))
+        img_metrics['MAD']       = float(mad(res_img, tar_img))
+        img_metrics['GMSD']      = float(gmsd(res_img, tar_img))
+        img_metrics['FSIM']      = float(fsim(res_img, tar_img))
+        img_metrics['VIF']       = float(vif(res_img, tar_img))
+        img_metrics['CIEDE2000'] = float(cie2000(res_img, tar_img))
 
-        # No-ref
         no_ref = compute_no_ref_metrics(res_img)
-        img_metrics['NIQE'] = no_ref['NIQE']
-        img_metrics['BRISQUE'] = no_ref['BRISQUE']
-        img_metrics['Entropy'] = no_ref['Entropy']
+        img_metrics.update(no_ref)
 
-        # New metric
-        img_metrics['NIQE_CP'] = compute_niqe_cp(res_img)
+        img_metrics['NIQE_CP'] = float(compute_niqe_cp(res_img))
 
-        # UIQ/UCIQE
-        img_metrics['UCIQE'] = batch_uciqe(res)
-        img_metrics['UIQM'] = calculate_uiqm(res_img)
-        img_metrics['UICM'] = uicm(res_img)
+        uciqe_val = batch_uciqe(res)
+        if isinstance(uciqe_val, torch.Tensor):
+            uciqe_val = uciqe_val.item()
+        img_metrics['UCIQE'] = float(uciqe_val)
+        img_metrics['UIQM']  = float(calculate_uiqm(res_img))
+        img_metrics['UICM']  = float(uicm(res_img))
 
-        # RMSE
-        img_metrics['RMSE'] = math.sqrt(img_metrics['MSE'])
+        img_metrics['RMSE'] = float(math.sqrt(img_metrics['MSE']))
 
-        # Add filename
         img_metrics['Filename'] = fname
         all_image_metrics.append(img_metrics)
 
-        # Accumulate for averages
         for k in metrics:
             if k in img_metrics:
                 metrics[k] += img_metrics[k]
 
-    # Average metrics
     n = len(testloader)
     for k in metrics:
         metrics[k] /= n
-    metrics['RMSE'] = math.sqrt(metrics['MSE'])
+    metrics['RMSE'] = float(math.sqrt(metrics['MSE']))
 
-    # Save logs
     test_info = f"Test Result on {opt.MODEL.SESSION}, checkpoint {opt.TESTING.WEIGHT}, testing data {opt.TESTING.VAL_DIR}"
     print(test_info)
     for k, v in metrics.items():
@@ -818,4 +800,3 @@ def test():
 if __name__=='__main__':
     os.makedirs('result', exist_ok=True)
     test()
-
