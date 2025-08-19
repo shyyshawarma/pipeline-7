@@ -28,8 +28,8 @@ TRAINING:
 
 TESTING:
   INPUT: 'input'
-  TARGET: 'target'
-  VAL_DIR: 'FLEX_euvp'     # path to testing data
+  TARGET: 'GT'
+  VAL_DIR: 'remaining_lsui'     # path to testing data
   WEIGHT: 'results/save/UIR_PolyKernel_epoch_119.pth'
   SAVE_IMAGES: True
   RESULT_DIR: 'results/save/test'
