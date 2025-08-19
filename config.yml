@@ -29,7 +29,7 @@ TRAINING:
 TESTING:
   INPUT: 'input'
   TARGET: 'GT'
-  VAL_DIR: 'remaining_lsui'     # path to testing data
+  VAL_DIR: 'final_test_euvp_KMFEKNA'     # path to testing data
   WEIGHT: 'results/save/UIR_PolyKernel_epoch_119.pth'
   SAVE_IMAGES: True
   RESULT_DIR: 'results/save/test'
