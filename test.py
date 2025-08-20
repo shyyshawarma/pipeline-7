@@ -529,7 +529,6 @@
 # if __name__=='__main__':
 #     os.makedirs('result', exist_ok=True)
 #     test()
-
 import json
 import warnings
 import os
@@ -665,7 +664,7 @@ def calculate_uiqm(rgb_image):
     c1, c2, c3 = 0.0282, 0.2953, 3.5753
     return c1*uicm(rgb_image) + c2*uism(rgb_image) + c3*uiconm(rgb_image)
 
-# ----------------- New Combined Metric -----------------
+# ----------------- NIQE + CP Variants -----------------
 
 def color_plausibility(img_np):
     if img_np.dtype != np.float32 and img_np.dtype != np.float64:
@@ -677,15 +676,21 @@ def color_plausibility(img_np):
     chroma_var = abs(a_std - b_std)
     return dev + chroma_var
 
-def compute_niqe_cp(img):
+def compute_niqe_cp_variants(img):
     if img.ndim == 2:
         gray = img
     else:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray_3ch = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+
     niqe_score = calculate_niqe(gray_3ch, crop_border=0, input_order='HWC', convert_to='y')
-    cp_score = color_plausibility(img)
-    return 0.5*niqe_score + 0.5*cp_score
+    cp_score   = color_plausibility(img)
+
+    return {
+        'NIQE_CP'    : 0.5*niqe_score + 0.5*cp_score,
+        'NIQE_CP_75' : 0.25*niqe_score + 0.75*cp_score,
+        'NIQE_CP_25' : 0.75*niqe_score + 0.25*cp_score,
+    }
 
 # ----------------- Other No-Ref Metrics -----------------
 
@@ -721,7 +726,8 @@ def test():
 
     metrics = {k:0 for k in [
         'PSNR','SSIM','MSE','RMSE','Delta-E','MAD','GMSD','FSIM','VIF','CIEDE2000',
-        'MS-SSIM','LPIPS','NIQE','BRISQUE','Entropy','UCIQE','UIQM','UICM','NIQE_CP'
+        'MS-SSIM','LPIPS','NIQE','BRISQUE','Entropy','UCIQE','UIQM','UICM',
+        'NIQE_CP','NIQE_CP_75','NIQE_CP_25'
     ]}
 
     all_image_metrics = []
@@ -760,7 +766,8 @@ def test():
         no_ref = compute_no_ref_metrics(res_img)
         img_metrics.update(no_ref)
 
-        img_metrics['NIQE_CP'] = float(compute_niqe_cp(res_img))
+        niqe_cp_scores = compute_niqe_cp_variants(res_img)
+        img_metrics.update({k: float(v) for k,v in niqe_cp_scores.items()})
 
         uciqe_val = batch_uciqe(res)
         if isinstance(uciqe_val, torch.Tensor):
