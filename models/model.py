@@ -614,7 +614,7 @@ class UIR_PolyKernel(nn.Module):
         out_dec_level2 = self.decoder_level2(inp_dec_level2)
 
         inp_dec_level1 = self.up2_1(out_dec_level2)
-        inp_dec_level1 = cat(out_enc_level1, out_enc_level1)
+        inp_dec_level1 = cat(inp_dec_level1, out_enc_level1)
         inp_dec_level1 = self.reduce_chan_level1(inp_dec_level1)
         out_dec_level1 = self.decoder_level1(inp_dec_level1)
 
